@@ -1,89 +1,76 @@
-# ✉ SmartMail
+✉ SmartMail
 
 AI-powered Gmail client built with Streamlit and Google Gemini.
 
-SmartMail connects to your Gmail inbox, categorises emails using AI, generates concise summaries, drafts replies, and helps compose new emails in different tones — all from a minimal web interface.
+SmartMail connects to your Gmail inbox, categorizes emails using AI, generates concise summaries, drafts replies, and helps compose new emails in different tones — all from a minimal web interface.
 
----
+🌐 Live Demo
+link : https://smartmail-xxgnibyhhxyqj6yqckraqs.streamlit.app/
 
-## 🌐 Live Demo
+This version runs on Streamlit Community Cloud.
+Read-state resets when the app restarts due to local JSON storage.
 
-**Deployed App:**  
-https://smartmail-xxgnibyhhxyqj6yqckraqs.streamlit.app/ 
+🚀 Overview
 
-> This version runs on Streamlit Community Cloud.  
-> Read-state resets when the app restarts due to local JSON storage.
-
----
-
-## 🚀 Overview
-
-SmartMail is designed as a **personal AI email assistant** focused on usability, efficiency, and operating within free-tier API limits.
+SmartMail is designed as a personal AI email assistant focused on usability, efficiency, and operating within free-tier API limits.
 
 This project is intended for single-user deployment and learning purposes.
 
----
+✨ Features
+📬 Smart Inbox
 
-## ✨ Features
+Fetch unread emails using Gmail IMAP
 
-### 📬 Smart Inbox
-- Fetch unread emails using Gmail IMAP
-- AI categorises emails into:
-  - Important  
-  - Promotions  
-  - Updates  
-  - Others  
-- Generates:
-  - Concise AI summary  
-  - Ready-to-edit draft reply  
-- Persistent read-state (local JSON storage)
-- Search, filter, and sort emails
-- Bulk delete support
-- Attachment download
+AI categorizes emails into: Important, Promotions, Updates, Others
 
----
+Generates:
 
-### ✍️ AI Compose
-- Describe your email in plain English
-- Automatic tone detection
-- Draft preview before sending
-- Manual editing before send
-- File attachment support
+Concise AI summary
 
----
+Ready-to-edit draft reply
 
-### ⚙️ Smart Model Selection
-- Calls `list_models()` on connect
-- Automatically selects the highest free-tier model available
-- Falls back silently if quota is exceeded
-- Prevents crashes or hanging when limits are reached
+Persistent read-state (local JSON storage)
 
----
+Search, filter, and sort emails
 
-## 🧠 Architecture
+Bulk delete support
 
+Attachment download
 
-User
-↓
-Streamlit UI
-↓
-Email Utils (IMAP/SMTP)
-↓
-AI Utils (Gemini API)
-↓
-Local Read State (JSON)
+✍️ AI Compose
 
+Describe your email in plain English
+
+Automatic tone detection
+
+Draft preview before sending
+
+Manual editing before send
+
+File attachment support
+
+⚙️ Smart Model Selection
+
+Calls list_models() on connect
+
+Automatically selects the highest free-tier model available
+
+Falls back silently if quota is exceeded
+
+Prevents crashes or hanging when limits are reached
+
+🧠 Architecture
+User → Streamlit UI → Email Utils (IMAP/SMTP) → AI Utils (Gemini API) → Local Read State (JSON)
 
 Project separation:
-- `components/` → UI
-- `utils/` → Business logic & integrations
-- `config/` → Styling & configuration
 
----
+components/ → UI
 
-## 📂 Project Structure
+utils/ → Business logic & integrations
 
+config/ → Styling & configuration
 
+📂 Project Structure
 SmartMail/
 ├── agent.py
 ├── requirements.txt
@@ -92,101 +79,88 @@ SmartMail/
 ├── utils/
 ├── config/
 └── .streamlit/
+🛠 Tech Stack
 
+Python 3.10+
 
----
+Streamlit
 
-## 🛠 Tech Stack
+Google Gemini (google-generativeai)
 
-- Python 3.10+
-- Streamlit
-- Google Gemini (`google-generativeai`)
-- Gmail IMAP (fetch)
-- Gmail SMTP (send)
-- python-dotenv
-- Local JSON persistence
+Gmail IMAP (fetch)
 
----
+Gmail SMTP (send)
 
-## 🔐 Authentication
+python-dotenv
+
+Local JSON persistence
+
+🔐 Authentication
 
 SmartMail uses:
-- Gmail App Password (IMAP + SMTP)
-- Google Gemini API Key
+
+Gmail App Password (IMAP + SMTP)
+
+Google Gemini API Key
 
 OAuth is not implemented in this version due to cloud billing requirements.
+This tool is intended for personal deployment. Do not commit .env or credentials to GitHub.
 
-This tool is intended for **personal deployment**. Do not commit `.env` or credentials to GitHub.
+⚠️ Limitations
 
----
+Designed for single-user use
 
-## ⚠️ Limitations
+No OAuth authentication
 
-- Designed for single-user use
-- No OAuth authentication
-- Free-tier Gemini rate limits apply
-- Local JSON read-state resets on Streamlit Cloud restart
-- Not optimized for very large inboxes
-- Credentials are stored locally via `.env` or Streamlit secrets
+Free-tier Gemini rate limits apply
 
----
+Local JSON read-state resets on Streamlit Cloud restart
 
-## 🧪 Resource Optimization
+Not optimized for very large inboxes
 
-To reduce API usage:
-- Email body truncation before AI analysis
-- Model fallback logic
-- Controlled email fetch size
-- Draft regeneration only when requested
+Credentials are stored locally via .env or Streamlit secrets
 
----
+🧪 Resource Optimization
 
-## ▶️ Setup
+Email body truncation before AI analysis
 
-### 1. Clone repository
+Model fallback logic
 
+Controlled email fetch size
+
+Draft regeneration only when requested
+
+▶️ Setup
+1. Clone repository
 git clone https://github.com/your-username/SmartMail.git
-
 cd SmartMail
-
-
-### 2. Install dependencies
-
+2. Install dependencies
 pip install -r requirements.txt
+3. Configure environment (Local / Optional)
 
-
-### 3. Configure environment (Local / Optional)
-Create a `.env` file if running locally:
-
+Create a .env file if running locally:
 
 EMAIL=your_email@gmail.com
-
 APP_PASSWORD=your_gmail_app_password
 GEMINI_API_KEY=your_gemini_api_key
 
+For Streamlit deployment, use Streamlit Secrets instead of .env.
 
-> For Streamlit deployment, use **Streamlit Secrets** instead of `.env`.
-
-### 4. Run locally
-
+4. Run locally
 streamlit run agent.py
 
+Open: http://localhost:8501
 
-Open:
+🌍 Deployment (Streamlit Community Cloud)
 
-http://localhost:8501
+Push project to GitHub (public repository)
 
+Go to Streamlit Share
 
----
+Click New app → select repository → main file: agent.py
 
-## 🌍 Deployment (Streamlit Community Cloud)
+Open Secrets tab and add credentials in TOML format:
 
-1. Push project to GitHub (public repository)
-2. Go to https://share.streamlit.io
-3. Click **New app** → select repository → main file: `agent.py`
-4. Open **Secrets** tab and add credentials in TOML format:
-
-```toml
 EMAIL = "your_email@gmail.com"
 APP_PASSWORD = "your_app_password"
 GEMINI_API_KEY = "your_api_key"
@@ -203,9 +177,4 @@ Pakistan
 
 📜 License
 
-MIT License
-
-Free to use, modify, and distribute.
-
-
----
+MIT License — Free to use, modify, and distribute.
