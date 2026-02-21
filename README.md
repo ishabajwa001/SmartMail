@@ -67,26 +67,24 @@ User → Streamlit UI → Email Utils (IMAP/SMTP) → AI Utils (Gemini API) → 
 
 ## 📂 Project Structure
 
-
 SmartMail/
-├── agent.py # Main Streamlit app
-├── requirements.txt # Python dependencies
-├── .env.example # Example environment variables
-├── components/ # Streamlit UI components
-│ ├── inbox.py
-│ ├── compose.py
-│ └── ...
-├── utils/ # Logic & integrations
-│ ├── email_utils.py
-│ ├── ai_utils.py
-│ └── ...
-├── config/ # Styling & configuration
-│ ├── style.py
-│ └── settings.py
-└── .streamlit/ # Streamlit app configuration
-└── config.toml
-
-
+├── agent.py                 # Main Streamlit app
+├── requirements.txt         # Python dependencies
+├── .env.example             # Example environment variables
+├── components/              # Streamlit UI components
+│   ├── inbox.py
+│   ├── compose.py
+│   └── ...
+├── utils/                   # Logic & integrations
+│   ├── email_utils.py
+│   ├── ai_utils.py
+│   └── ...
+├── config/                  # Styling & configuration
+│   ├── style.py
+│   └── settings.py
+└── .streamlit/              # Streamlit app configuration
+    └── config.toml
+    
 ---
 
 ## 🛠 Tech Stack
