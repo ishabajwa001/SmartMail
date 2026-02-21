@@ -178,12 +178,3 @@ BS Computer Science Student, Pakistan
 📜 License
 
 MIT License — Free to use, modify, and distribute.
-
-
----
-
-This version is **GitHub-ready**, with:  
-- Proper heading levels (H1–H3)  
-- Clear project structure  
-- Code blocks for commands, `.env`, and TOML secrets  
-- Clean bullet lists for features and limitations  
