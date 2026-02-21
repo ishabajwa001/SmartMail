@@ -59,7 +59,7 @@ SmartMail/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/ishajaved/smartmail.git
+git clone https://github.com/username/smartmail.git
 cd smartmail
 ```
 
@@ -175,7 +175,7 @@ Standard library only beyond these: `imaplib`, `smtplib`, `email`, `re`, `dateti
 
 ## 👩‍💻 Developer
 
-**Isha Javed**
+Isha Javed
 ---
 
 ## 📄 License
