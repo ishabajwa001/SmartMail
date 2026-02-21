@@ -175,7 +175,7 @@ Standard library only beyond these: `imaplib`, `smtplib`, `email`, `re`, `dateti
 
 ## 👩‍💻 Developer
 
-<sup>Isha Javed | BSCS</sup>
+<sup>Isha Javed | Aspiring AI Engineer </sup>
 ---
 
 ## 📄 License
