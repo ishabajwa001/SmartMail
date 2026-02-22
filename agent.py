@@ -15,9 +15,9 @@ def _secret(key: str) -> str:
     except Exception:
         return os.getenv(key, "")
 
-os.environ.setdefault("EMAIL",          _secret("EMAIL"))
-os.environ.setdefault("APP_PASSWORD",   _secret("APP_PASSWORD"))
-os.environ.setdefault("GEMINI_API_KEY", _secret("GEMINI_API_KEY"))
+os.environ.setdefault("EMAIL",           _secret("EMAIL"))
+os.environ.setdefault("APP_PASSWORD",    _secret("APP_PASSWORD"))
+os.environ.setdefault("GEMINI_API_KEY",  _secret("GEMINI_API_KEY"))
 
 st.set_page_config(
     page_title="SmartMail",

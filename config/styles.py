@@ -541,6 +541,20 @@ mark {
 }
 
 /* ═══════════════════════════
+   HIDE DEFAULT FILE UPLOADER LIST
+   (we render our own custom attachment preview)
+═══════════════════════════ */
+[data-testid="stFileUploaderFile"],
+[data-testid="stFileUploaderFileData"],
+[data-testid="stFileUploaderDropzone"] + div > div > div > ul,
+[data-testid="stFileUploader"] ul,
+[data-testid="stFileUploader"] li,
+section[data-testid="stFileUploader"] > div > div:nth-child(2),
+[data-testid="stFileUploaderDropzone"] ~ div[style] {
+    display: none !important;
+}
+
+/* ═══════════════════════════
    CLEAR FILTERS BUTTON override
 ═══════════════════════════ */
 [data-testid="stButton"][key="clear_filters"] > button,

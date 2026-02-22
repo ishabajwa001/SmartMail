@@ -1,4 +1,5 @@
 import streamlit as st
+import html as _html_mod
 from utils.email_utils import send_email
 from utils.ai_utils import ai_compose, parse_draft
 
@@ -9,6 +10,14 @@ def render_compose(email_addr: str, app_pass: str) -> None:
         "<div class='page-sub'>Write manually or generate a draft with AI assistance.</div>",
         unsafe_allow_html=True,
     )
+
+    # Show persistent success/error messages that survive rerun
+    if st.session_state.get("compose_sent_msg"):
+        st.success(st.session_state.compose_sent_msg)
+        st.session_state.compose_sent_msg = ""
+    if st.session_state.get("compose_error_msg"):
+        st.error(st.session_state.compose_error_msg)
+        st.session_state.compose_error_msg = ""
 
     col_form, col_ai = st.columns([3, 2], gap="large")
 
@@ -37,7 +46,7 @@ def render_compose(email_addr: str, app_pass: str) -> None:
         uploaded_files = st.file_uploader(
             "📎 Attach files — drag & drop or click to browse",
             accept_multiple_files=True,
-            key="compose_attachments",
+            key=f"compose_attachments_{st.session_state.compose_gen}",
         )
 
         if uploaded_files:
@@ -49,47 +58,66 @@ def render_compose(email_addr: str, app_pass: str) -> None:
                 "mp3":"🎵","wav":"🎵","flac":"🎵",
                 "txt":"📃","csv":"📊","json":"🔧","py":"🐍","js":"⚡","html":"🌐","css":"🎨",
             }
+            n_files   = len(uploaded_files)
             total_kb  = round(sum(f.size for f in uploaded_files) / 1024, 1)
             total_str = f"{total_kb} KB" if total_kb < 1024 else f"{round(total_kb/1024,1)} MB"
-            rows_html = ""
+
+            # Header row
+            st.markdown(
+                f"<div style='background:var(--bg4);border:1px solid var(--b2);"
+                f"border-radius:10px 10px 0 0;padding:0.5rem 0.9rem;"
+                f"display:flex;justify-content:space-between;align-items:center;'>"
+                f"<span style='font-family:Outfit,sans-serif;font-size:0.68rem;font-weight:700;"
+                f"color:var(--t2);text-transform:uppercase;letter-spacing:0.09em;'>"
+                f"📎 {n_files} file{'s' if n_files != 1 else ''} ready</span>"
+                f"<span style='font-family:JetBrains Mono,monospace;font-size:0.68rem;"
+                f"color:var(--blue2);font-weight:600;'>{total_str}</span>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+            # One row per file — using st.columns so no HTML injection needed
             for f in uploaded_files:
-                ext       = f.name.rsplit(".", 1)[-1].lower() if "." in f.name else ""
-                icon      = _ext_icon.get(ext, "📎")
-                size      = f"{round(f.size/1024,1)} KB" if f.size < 1048576 else f"{round(f.size/1048576,1)} MB"
-                name      = f.name if len(f.name) <= 36 else f.name[:34] + "…"
-                ext_label = ext.upper() if ext else "FILE"
-                rows_html += f"""
-                <div style='display:flex;align-items:center;gap:10px;
-                            padding:0.55rem 0.8rem;border-bottom:1px solid var(--b1);'>
-                    <span style='font-size:1.3rem;flex-shrink:0;'>{icon}</span>
-                    <div style='flex:1;min-width:0;'>
-                        <div style='font-family:"Outfit",sans-serif;font-size:0.84rem;
-                                    font-weight:500;color:var(--t1);
-                                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>{name}</div>
-                        <div style='font-family:"JetBrains Mono",monospace;font-size:0.63rem;
-                                    color:var(--t3);margin-top:1px;'>{size}</div>
-                    </div>
-                    <span style='background:rgba(91,141,239,0.12);border:1px solid rgba(91,141,239,0.25);
-                                 border-radius:5px;padding:2px 8px;font-family:"JetBrains Mono",monospace;
-                                 font-size:0.58rem;font-weight:700;color:var(--blue2);
-                                 flex-shrink:0;'>{ext_label}</span>
-                </div>"""
-            st.markdown(f"""
-            <div style='background:var(--bg3);border:1px solid var(--b2);
-                        border-radius:10px;overflow:hidden;margin-top:0.2rem;'>
-                <div style='display:flex;justify-content:space-between;align-items:center;
-                            padding:0.55rem 0.9rem;background:var(--bg4);
-                            border-bottom:1px solid var(--b1);'>
-                    <span style='font-family:"Outfit",sans-serif;font-size:0.68rem;font-weight:700;
-                                 color:var(--t2);text-transform:uppercase;letter-spacing:0.09em;'>
-                        📎 {len(uploaded_files)} file{'s' if len(uploaded_files)!=1 else ''} ready
-                    </span>
-                    <span style='font-family:"JetBrains Mono",monospace;font-size:0.68rem;
-                                 color:var(--blue2);font-weight:600;'>{total_str}</span>
-                </div>
-                {rows_html}
-            </div>
-            """, unsafe_allow_html=True)
+                ext   = f.name.rsplit(".", 1)[-1].lower() if "." in f.name else ""
+                icon  = _ext_icon.get(ext, "📎")
+                size  = f"{round(f.size/1024,1)} KB" if f.size < 1048576 else f"{round(f.size/1048576,1)} MB"
+                label = ext.upper() if ext else "FILE"
+                name  = f.name if len(f.name) <= 36 else f.name[:34] + "…"
+
+                ic, nm, sz, tg = st.columns([0.5, 6, 1.5, 1.2])
+                with ic:
+                    st.markdown(
+                        f"<div style='font-size:1.3rem;padding-top:6px;text-align:center;'>{icon}</div>",
+                        unsafe_allow_html=True,
+                    )
+                with nm:
+                    st.markdown(
+                        f"<div style='font-family:Outfit,sans-serif;font-size:0.84rem;"
+                        f"font-weight:500;color:var(--t1);padding-top:2px;"
+                        f"white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'>"
+                        f"{_html_mod.escape(name)}</div>"
+                        f"<div style='font-family:JetBrains Mono,monospace;font-size:0.63rem;"
+                        f"color:var(--t3);'>{size}</div>",
+                        unsafe_allow_html=True,
+                    )
+                with sz:
+                    pass  # spacer
+                with tg:
+                    st.markdown(
+                        f"<div style='background:rgba(91,141,239,0.12);"
+                        f"border:1px solid rgba(91,141,239,0.25);border-radius:5px;"
+                        f"padding:2px 8px;font-family:JetBrains Mono,monospace;"
+                        f"font-size:0.58rem;font-weight:700;color:var(--blue2);"
+                        f"text-align:center;margin-top:4px;'>{_html_mod.escape(label)}</div>",
+                        unsafe_allow_html=True,
+                    )
+
+            # Bottom border cap
+            st.markdown(
+                "<div style='border:1px solid var(--b2);border-top:none;"
+                "border-radius:0 0 10px 10px;height:4px;background:var(--bg3);'></div>",
+                unsafe_allow_html=True,
+            )
         else:
             st.markdown("""
             <div style='background:var(--bg3);border:2px dashed var(--b1);border-radius:10px;
@@ -105,8 +133,14 @@ def render_compose(email_addr: str, app_pass: str) -> None:
         c_send, c_clear = st.columns([3, 2])
         with c_send:
             if st.button("📤 Send Email", key="compose_send"):
-                _handle_send(email_addr, app_pass, to_val, sub_val, body_val,
-                             attachments=uploaded_files or None)
+                # Check attachment sizes before attempting to send
+                _MAX_ATT = 25 * 1024 * 1024  # 25 MB
+                oversized = [f.name for f in (uploaded_files or []) if f.size > _MAX_ATT]
+                if oversized:
+                    st.error(f"Attachment(s) exceed the 25 MB limit: {', '.join(oversized)}")
+                else:
+                    _handle_send(email_addr, app_pass, to_val, sub_val, body_val,
+                                 attachments=uploaded_files or None)
         with c_clear:
             if st.button("🗑️ Clear", key="compose_clear"):
                 st.session_state.compose_to   = ""
@@ -145,6 +179,11 @@ def render_compose(email_addr: str, app_pass: str) -> None:
                     st.error("❌ " + raw[7:].strip())
                 else:
                     st.session_state.ai_draft_text = raw
+                    # Delete stale widget key so Streamlit re-renders with the new value.
+                    # Without this, Streamlit ignores the `value` param if the key already
+                    # exists in session state (from a previous generate or user edit).
+                    stale_key = f"ai_draft_edit_{st.session_state.compose_gen}"
+                    st.session_state.pop(stale_key, None)
 
         # ── Draft preview box ─────────────────────────────────────────────────
         if st.session_state.ai_draft_text:
@@ -176,13 +215,14 @@ def render_compose(email_addr: str, app_pass: str) -> None:
                 if st.button("🔄 Regenerate", key="ai_regen", use_container_width=True):
                     if brief.strip():
                         with st.spinner("Regenerating…"):
-                            raw = ai_compose(brief)
+                            raw = ai_compose(brief, regenerate=True)
                         if raw.startswith("[quota]"):
                             st.warning("⏳ " + raw[7:].strip())
                         elif raw.startswith("[error]"):
                             st.error("❌ " + raw[7:].strip())
                         else:
                             st.session_state.ai_draft_text = raw
+                            st.session_state.compose_gen += 1
                             st.rerun()
                     else:
                         st.warning("Write a brief above first.")
@@ -218,11 +258,18 @@ def _handle_send(email_addr, app_pass, to, sub, body, attachments=None):
             send_email(email_addr, app_pass, to, sub, body, attachments=attachments)
             n    = len(attachments) if attachments else 0
             note = f" with {n} attachment{'s' if n != 1 else ''}" if n else ""
-            st.success(f"✅ Email sent to **{to}**{note}!")
+            # Store success message in session state so it survives st.rerun()
+            st.session_state.compose_sent_msg = f"✅ Email sent to **{to}**{note}!"
             st.session_state.compose_to   = ""
             st.session_state.compose_sub  = ""
             st.session_state.compose_body = ""
             st.session_state.compose_gen += 1
             st.rerun()
         except Exception as e:
-            st.error(f"Failed to send: {e}")
+            msg = str(e).lower()
+            if "size" in msg or "large" in msg or "too big" in msg:
+                st.error(f"Failed to send: {e}")  # size limit errors are user-actionable
+            elif "auth" in msg or "login" in msg or "password" in msg:
+                st.error("Failed to send: Authentication error. Please reconnect your account in the sidebar.")
+            else:
+                st.error("Failed to send email. Please check your connection and try again.")

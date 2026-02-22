@@ -1,17 +1,29 @@
 import streamlit as st
 import smtplib
 import datetime
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 _SUPPORT_EMAIL = "ishajaved098@gmail.com"
 
 
+def _sanitize_header(value: str) -> str:
+    """Strip CR/LF/NUL from header values to prevent email header injection."""
+    if not value:
+        return ""
+    return re.sub(r"[\r\n\x00]", "", value).strip()
+
+
 def _send_to_support(sender_email: str, app_pass: str, message: str) -> bool:
     try:
+        # Sanitize user-supplied values before setting as headers
+        safe_sender  = _sanitize_header(sender_email or "anonymous")
+        safe_subject = _sanitize_header(f"[SmartMail] Issue from {sender_email or 'anonymous'}")
+
         msg = MIMEMultipart()
-        msg["Subject"] = f"[SmartMail] Issue from {sender_email or 'anonymous'}"
-        msg["From"]    = sender_email
+        msg["Subject"] = safe_subject
+        msg["From"]    = safe_sender
         msg["To"]      = _SUPPORT_EMAIL
         body = (
             f"SmartMail Support Request\n"
@@ -36,13 +48,22 @@ def render_support():
         unsafe_allow_html=True,
     )
 
+    # Show persistent flash messages that survive rerun
+    if st.session_state.get("support_flash_msg"):
+        st.success(st.session_state.support_flash_msg)
+        st.session_state.support_flash_msg = ""
+
+    # Initialize counter for resetting the text area
+    if "support_form_key" not in st.session_state:
+        st.session_state.support_form_key = 0
+
     col, _ = st.columns([2, 1])
     with col:
         issue_text = st.text_area(
             "Describe your issue or feedback",
             placeholder="e.g. The regenerate button doesn't update the draft, emails aren't loading, or I'd love a feature that…",
             height=180,
-            key="support_issue",
+            key=f"support_issue_{st.session_state.support_form_key}",
         )
 
         if st.button("📤 Submit", key="support_submit"):
@@ -51,13 +72,14 @@ def render_support():
             else:
                 sender = st.session_state.get("email_addr", "")
                 app_pw = st.session_state.get("app_pass", "")
+                # Increment key to reset the text area widget
+                st.session_state.support_form_key += 1
                 if sender and app_pw:
                     ok = _send_to_support(sender, app_pw, issue_text.strip())
-                    if ok:
-                        st.success("✅ Message sent! We'll get back to you soon.")
-                        del st.session_state["support_issue"]
-                        st.rerun()
-                    else:
-                        st.info("✅ Feedback received — thank you!")
+                    st.session_state.support_flash_msg = (
+                        "✅ Message sent! We'll get back to you soon." if ok
+                        else "✅ Feedback received — thank you!"
+                    )
                 else:
-                    st.info("✅ Feedback noted. Connect your account in the sidebar for instant delivery.")
+                    st.session_state.support_flash_msg = "✅ Feedback noted. Connect your account in the sidebar for instant delivery."
+                st.rerun()

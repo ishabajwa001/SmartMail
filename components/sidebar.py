@@ -3,10 +3,22 @@ import streamlit as st
 import google.generativeai as genai
 
 
+_GEMINI_PREFERRED = [
+    "gemini-2.0-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-pro",
+    "gemini-pro",
+    "gemini-2.5-flash",
+]
+
+
 def render_sidebar() -> tuple[str, str]:
     with st.sidebar:
 
-        # ── Logo ─────────────────────────────────────────────
+        # ── Logo
         st.markdown("""
         <div style="padding:1.6rem 1.3rem 1.2rem; border-bottom:1px solid var(--b1);
                     background:linear-gradient(180deg, rgba(61,142,255,0.06), transparent);">
@@ -32,7 +44,7 @@ def render_sidebar() -> tuple[str, str]:
         </div>
         """, unsafe_allow_html=True)
 
-        # ── Account Credentials ───────────────────────────────
+        # ── Account Credentials
         st.markdown("<div class='slbl'>Account</div>", unsafe_allow_html=True)
 
         email_addr = st.text_input("Gmail Address",
@@ -48,8 +60,10 @@ def render_sidebar() -> tuple[str, str]:
                                    placeholder="AIza…",
                                    type="password", key="sb_gem")
 
+        # ── Connection status badge
         if st.session_state.credentials_ok:
-            model_name = st.session_state.get("gemini_model_name", "gemini")
+            import html as _html
+            model_name = _html.escape(st.session_state.get("gemini_model_name", "gemini"))
             st.markdown(
                 f"<div class='badge-ok'><span class='dot'></span> Connected &amp; Ready"
                 f"<div style='font-size:0.58rem;color:var(--t3);margin-top:2px;'>model: {model_name}</div></div>",
@@ -58,65 +72,59 @@ def render_sidebar() -> tuple[str, str]:
             st.markdown("<div class='badge-err'>○ Not connected yet</div>",
                         unsafe_allow_html=True)
 
+        # ── Connect button
         if st.button("⚡ Connect Account", key="btn_connect"):
             if email_addr and app_pass and gemini_key:
                 try:
-                    st.session_state.model = None
+                    st.session_state.model          = None
                     st.session_state.credentials_ok = False
                     genai.configure(api_key=gemini_key)
 
-                    # Priority: highest free-tier RPD limits first
-                    # gemini-2.0-flash-lite: 1500/day  |  gemini-2.0-flash: 1500/day
-                    # gemini-1.5-flash: 1500/day  |  gemini-2.5-flash: 25/day (avoid)
-                    PREFERRED = [
-                        "gemini-2.0-flash-lite",
-                        "gemini-2.0-flash",
-                        "gemini-1.5-flash",
-                        "gemini-1.5-flash-latest",
-                        "gemini-1.5-flash-8b",
-                        "gemini-1.5-pro",
-                        "gemini-pro",
-                        "gemini-2.5-flash",   # last resort — only 25/day free
-                    ]
                     available = {
                         m.name.split("/")[-1]: m.name
                         for m in genai.list_models()
                         if "generateContent" in getattr(m, "supported_generation_methods", [])
-                        and "tts" not in m.name.lower()
-                        and "vision" not in m.name.lower()
+                        and "tts"       not in m.name.lower()
+                        and "vision"    not in m.name.lower()
                         and "embedding" not in m.name.lower()
-                        and "aqa" not in m.name.lower()
-                        and "preview" not in m.name.lower()
+                        and "aqa"       not in m.name.lower()
+                        and "preview"   not in m.name.lower()
                     }
 
-                    # Build ordered fallback list of all available models
-                    ordered = [n for n in PREFERRED if n in available]
-                    # Append any available models not in our list
+                    ordered  = [n for n in _GEMINI_PREFERRED if n in available]
                     ordered += [n for n in available if n not in ordered]
 
                     if not ordered:
-                        st.error("No supported generative models found for this API key.")
+                        st.error("No supported Gemini models found for this API key.")
                     else:
                         chosen = ordered[0]
-                        st.session_state.model = genai.GenerativeModel(chosen)
-                        st.session_state.model_fallbacks = ordered   # full list for quota fallback
-                        st.session_state.credentials_ok = True
-                        st.session_state.email_addr = email_addr
-                        st.session_state.app_pass   = app_pass
+                        st.session_state.model             = genai.GenerativeModel(chosen)
+                        st.session_state.model_fallbacks   = ordered
+                        st.session_state.credentials_ok    = True
+                        st.session_state.email_addr        = email_addr
+                        st.session_state.app_pass          = app_pass
                         st.session_state.gemini_model_name = chosen
                         st.rerun()
 
                 except Exception as e:
-                    st.error(f"Connection failed: {e}")
+                    msg = str(e).lower()
+                    if "credentials" in msg or "password" in msg or "auth" in msg:
+                        st.error("Connection failed: Invalid credentials. Please check your email address and App Password.")
+                    elif "api" in msg or "key" in msg or "quota" in msg:
+                        st.error("Connection failed: API key error. Please check your Gemini API key.")
+                    elif "network" in msg or "connect" in msg or "timeout" in msg:
+                        st.error("Connection failed: Network error. Please check your internet connection.")
+                    else:
+                        st.error("Connection failed. Please verify your credentials and try again.")
             else:
                 st.warning("Please fill in all three fields.")
 
-        # ── Navigation ────────────────────────────────────────
+        # ── Navigation
         st.markdown("<div class='slbl'>Navigate</div>", unsafe_allow_html=True)
 
         pages  = {
-            "📬  Inbox":   "inbox",
-            "✍️  Compose": "compose",
+            "📬  Inbox":    "inbox",
+            "✍️  Compose":  "compose",
             "⚙️  Settings": "settings",
             "💬  Support":  "support",
         }
@@ -130,14 +138,13 @@ def render_sidebar() -> tuple[str, str]:
             st.session_state.current_page = pages[selected]
             st.rerun()
 
-        # ── Stats (shown after fetch) ─────────────────────────
+        # ── Stats (shown after fetch)
         if st.session_state.fetched and st.session_state.emails:
             st.markdown("<div class='slbl'>Stats</div>", unsafe_allow_html=True)
 
             n    = len(st.session_state.emails)
             cats = list(st.session_state.categories.values())
 
-            # Big count box
             st.markdown(f"""
             <div style="margin:0 1rem 0.9rem;
                         background:linear-gradient(135deg, rgba(61,142,255,0.10), rgba(0,217,255,0.06));
@@ -152,7 +159,6 @@ def render_sidebar() -> tuple[str, str]:
             </div>
             """, unsafe_allow_html=True)
 
-            # Category rows
             rows = [
                 ("Important",  "var(--coral2)", cats.count("Important")),
                 ("Promotions", "var(--blue2)",  cats.count("Promotions")),
@@ -173,6 +179,5 @@ def render_sidebar() -> tuple[str, str]:
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-
 
     return email_addr, app_pass

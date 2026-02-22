@@ -3,10 +3,50 @@ import email
 import re
 import smtplib
 import mimetypes
+import unicodedata
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+
+# Maximum attachment size: 25 MB (Gmail hard limit is ~25 MB per message)
+_MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
+
+
+def _sanitize_header(value: str) -> str:
+    """
+    Strip newlines and carriage returns from email header values to prevent
+    header injection attacks. Also trims whitespace.
+    """
+    if not value:
+        return ""
+    # Remove all CR, LF, and null bytes — the classic header injection vectors
+    sanitized = re.sub(r"[\r\n\x00]", "", value)
+    return sanitized.strip()
+
+
+def _sanitize_filename(filename: str) -> str:
+    """
+    Sanitize attachment filename:
+    - Strip path separators (path traversal defence)
+    - Remove control characters
+    - Limit to 255 characters
+    - Fall back to 'attachment.bin' if empty after sanitizing
+    """
+    if not filename:
+        return "attachment.bin"
+    # Normalize unicode (e.g. decomposed characters)
+    filename = unicodedata.normalize("NFKC", filename)
+    # Strip any directory component
+    filename = re.sub(r"[/\\]", "_", filename)
+    # Remove control characters (0x00-0x1F and 0x7F)
+    filename = re.sub(r"[\x00-\x1f\x7f]", "", filename)
+    filename = filename.strip()
+    # Limit length
+    if len(filename) > 255:
+        name, _, ext = filename.rpartition(".")
+        filename = name[:250] + ("." + ext if ext else "")
+    return filename or "attachment.bin"
 
 
 # ── HTML → clean plain text ────────────────────────────────────────────────────
@@ -84,17 +124,37 @@ def _parse_message(msg) -> dict:
             if ct.startswith("multipart/"):
                 continue
 
-            if "attachment" in cd:
+            is_attachment = "attachment" in cd
+            is_inline     = "inline" in cd
+            has_cid       = part.get("Content-ID") is not None
+
+            # ── Decide how to handle this part ───────────────────────────────
+            # Capture as a file if:
+            #   • explicitly marked attachment, OR
+            #   • it's an inline image/binary (embedded photo, logo, etc.), OR
+            #   • it's any non-text MIME type that isn't a container
+            is_binary = (
+                ct.startswith("image/")
+                or ct.startswith("audio/")
+                or ct.startswith("video/")
+                or ct.startswith("application/")
+            )
+
+            if is_attachment or (is_binary and (is_inline or has_cid or not ct.startswith("text/"))):
                 raw = part.get_payload(decode=True)
                 if raw:
                     filename = part.get_filename()
                     filename = (_decode_header(filename) if filename
                                 else f"file{mimetypes.guess_extension(ct) or '.bin'}")
+                    cid = part.get("Content-ID", "").strip("<>")
                     attachments.append({
                         "filename":     filename,
                         "content_type": ct,
                         "data":         raw,
                         "size":         len(raw),
+                        # True for embedded images / inline content (not classic attachments)
+                        "inline":       is_inline or has_cid,
+                        "cid":          cid,
                     })
             elif ct == "text/plain" and not plain_body:
                 raw = part.get_payload(decode=True)
@@ -138,7 +198,8 @@ def fetch_emails(email_addr: str, app_password: str, limit: int = 20) -> list[di
     mail = imaplib.IMAP4_SSL("imap.gmail.com")
     try:
         mail.login(email_addr, app_password)
-        mail.select("inbox", readonly=False)
+        # readonly=True — we only read here, no writes needed
+        mail.select("inbox", readonly=True)
 
         status, msgs = mail.search(None, "UNSEEN")
         if status != "OK" or not msgs[0]:
@@ -155,9 +216,9 @@ def fetch_emails(email_addr: str, app_password: str, limit: int = 20) -> list[di
                         parsed = _parse_message(msg)
                         results.append({
                             "id":          eid,
-                            "from":        _decode_header(msg.get("from", "Unknown")),
-                            "subject":     _decode_header(msg.get("subject", "(No Subject)")),
-                            "date":        msg.get("date", ""),
+                            "from":        _sanitize_header(_decode_header(msg.get("from", "Unknown"))),
+                            "subject":     _sanitize_header(_decode_header(msg.get("subject", "(No Subject)"))),
+                            "date":        _sanitize_header(msg.get("date", "")),
                             "body":        parsed["body"],
                             "attachments": parsed["attachments"],
                         })
@@ -200,6 +261,11 @@ def send_email(
     body: str,
     attachments=None,
 ) -> None:
+    # ── Sanitize all header values to prevent header injection ────────────────
+    from_addr = _sanitize_header(from_addr)
+    to_addr   = _sanitize_header(to_addr)
+    subject   = _sanitize_header(subject)
+
     msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"]    = from_addr
@@ -217,6 +283,20 @@ def send_email(
                 file_data    = att["data"]
                 filename     = att["filename"]
                 content_type = att.get("content_type", "application/octet-stream")
+
+            # ── Enforce size limit per attachment ─────────────────────────────
+            if len(file_data) > _MAX_ATTACHMENT_BYTES:
+                raise ValueError(
+                    f"Attachment '{filename}' is too large "
+                    f"({len(file_data) // (1024*1024)} MB). Maximum allowed is 25 MB."
+                )
+
+            # ── Sanitize filename ─────────────────────────────────────────────
+            filename = _sanitize_filename(filename)
+
+            # ── Sanitize content_type — only allow safe MIME types ────────────
+            if not re.match(r'^[a-zA-Z0-9!#$&\-^_]+/[a-zA-Z0-9!#$&\-^_.+]+$', content_type):
+                content_type = "application/octet-stream"
 
             main, sub = (content_type.split("/", 1) if "/" in content_type
                          else ("application", "octet-stream"))

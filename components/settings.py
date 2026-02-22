@@ -37,9 +37,7 @@ def render_settings():
         st.markdown("""
         <div class='set-card'>
             <h4>✦ Gemini API Key</h4>
-            <p>SmartMail uses <strong>Gemini 2.5 Flash</strong> for email categorisation,
-               smart summarisation, and AI-powered reply drafting.
-               The free tier is generous enough for personal use.</p>
+            <p>Use Google's <strong>Gemini</strong> models — generous free tier, great for personal use.</p>
             <ol>
                 <li>Visit <a href='https://aistudio.google.com/app/apikey' target='_blank'>aistudio.google.com/app/apikey</a></li>
                 <li>Click <strong>Create API Key</strong></li>

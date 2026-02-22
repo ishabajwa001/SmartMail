@@ -12,6 +12,7 @@ def init_state():
         "summaries":        {},
         "drafts":           {},
         "sent_flags":       {},
+        "reply_att_gen":    {},   # per-email counter — incremented on send to reset file uploader
         "deleted_indices":  set(),   # soft-deleted email indices
 
         "current_page": "inbox",
@@ -27,6 +28,21 @@ def init_state():
         "inbox_sort":   "Newest First",
         "inbox_search": "",
         "inbox_group":  "None",
+
+        # Compose: persist success/error messages across rerun
+        "compose_sent_msg":  "",
+        "compose_error_msg": "",
+
+        # Inbox: persist reply-sent and inbox-zero flash messages across rerun
+        "inbox_reply_sent_msg": "",
+        "inbox_flash_msg":      "",
+        # Inbox: two-step bulk delete confirmation flag
+        "bulk_delete_confirm":  False,
+
+        # Support: counter to reset text area widget
+        "support_form_key": 0,
+        # Support: persist feedback message across rerun
+        "support_flash_msg": "",
     }
     for key, val in defaults.items():
         if key not in st.session_state:
